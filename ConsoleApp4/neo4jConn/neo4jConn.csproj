@@ -65,5 +65,11 @@
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ConsoleApp4\ConsoleApp4.csproj">
+      <Project>{3748c89f-132c-4ffa-af6c-dfa9b9ea31af}</Project>
+      <Name>ConsoleApp4</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

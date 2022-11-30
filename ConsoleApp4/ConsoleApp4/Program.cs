@@ -541,208 +541,153 @@ namespace ConsoleApp4
                 catch { Console.WriteLine("something went wrong on 2 loop!"); }
             }
         }
-
-        // Main Method
-        static public void Main()
+        static void ReadData()
         {
-
-
-            var client = new GraphClient(new Uri("http://localhost:7474"), "GNG", "123456");
-
+            string connetionString = null;
+            SqlConnection cnn;
+            connetionString = @"data source = GNG; initial catalog = Mctrans; trusted_connection = true";
+            cnn = new SqlConnection(connetionString);
             try
             {
-                client.ConnectAsync();
+                cnn.Open();
+                SqlCommand command = new SqlCommand("SELECT * FROM Mc_Price", cnn);
+                command.ExecuteNonQuery();
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        // write the data on to the screen    
+                        Console.WriteLine(String.Format("{0} \t | {1} \t | {2} \t | {3} \t | {4}",
+                            // call the objects from their index    
+                            reader[0], reader[1], reader[2], reader[3], reader[4]));
+                    }
+                }
+
             }
-            catch { Console.WriteLine("could not made connection to neo4j!"); }
-
-
-
-            var query = @"MATCH (p:Person) WHERE toUpper(p.name) CONTAINS toUpper($searchString) 
-                                RETURN p{ name: p.name, born: p.born } ORDER BY p.Name LIMIT 5";
-         
-            Console.WriteLine(query);
-
-            //var createQuery = client.Cypher
-            //    .Create("(j:Book {Title: 'Test', PageCount:250})<-[re1:HAS_BOOK]-(m:Person {Name: 'John Doe'})")
-            //    .Return((j, m) => new
-            //    {
-            //        Book = j.As<Book>(),
-            //        Person = m.As<Person>()
-            //    }).ResultsAsync;
-            //foreach(var item in createQuery)
-            //{
-            //    Console.WriteLine(item.Book.Title);
-            //}
-            // Creating and initializing threads
-            Thread thr1 = new Thread(method1);
-            Thread thr2 = new Thread(method2);
-            Thread thr3 = new Thread(method3);
-            Thread thr4 = new Thread(method4);
-            thr1.Start();
-            thr2.Start();
-            thr3.Start();
-            thr4.Start();
+            catch (Exception ex)
+            {
+                Console.WriteLine("couldnt connect");
+            }
         }
+
+        // Main Method
+        static async Task Main()
+        {
+            Console.WriteLine("Do you want to Scrap Webpage?  (y/n) :");
+            string Scrapweb = Console.ReadLine();
+
+            if (Scrapweb == "y")
+            {
+                // Creating and initializing threads
+                Thread thr1 = new Thread(method1);
+                Thread thr2 = new Thread(method2);
+                Thread thr3 = new Thread(method3);
+                Thread thr4 = new Thread(method4);
+                thr1.Start();
+                thr2.Start();
+                thr3.Start();
+                thr4.Start();
+            }
+
+                Console.WriteLine("Do you want to display existing data in database?  (y/n) :");
+                string Databaseread = Console.ReadLine();
+            if (Databaseread == "y") {
+                ReadData();
+            }
+            
+            Console.WriteLine("Do you want to create graph?  (y/n) :");
+            string Neo4jGraph = Console.ReadLine();
+
+
+            if (Neo4jGraph == "y")
+            {
+                var driver = GraphDatabase.Driver("bolt://localhost:7687",
+                               AuthTokens.Basic("GNG", "123456"));
+
+                var cypherQuery =
+                  @"
+      MATCH (p:Product)-[:PART_OF]->(:Category)-[:PARENT*0..]->
+      (:Category {categoryName:$category})
+      RETURN p.productName as product
+      ";
+
+                var session = driver.AsyncSession(o => o.WithDatabase("neo4j"));
+                var result = await session.ReadTransactionAsync(async tx =>
+                {
+                    var r = await tx.RunAsync(cypherQuery,
+                            new { category = "Dairy Products" });
+                    return await r.ToListAsync();
+                });
+
+                await session?.CloseAsync();
+                foreach (var row in result)
+                    Console.WriteLine(row["product"].As<string>());
+
+                var cypherQuery3 = "MATCH (n)\r\nDETACH DELETE n";
+
+
+                //hjguytfuygvhguikghiujguigiyukggigjkgviujkgujikgiukgigikghujgyugug
+                string connetionString = null;
+                SqlConnection cnn;
+                connetionString = @"data source = GNG; initial catalog = Mctrans; trusted_connection = true";
+                cnn = new SqlConnection(connetionString);
+                try
+                {
+                    cnn.Open();
+                    SqlCommand command = new SqlCommand("SELECT * FROM Mc_Price", cnn);
+                    command.ExecuteNonQuery();
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            // write the data on to the screen    
+                            //Console.WriteLine(String.Format("{0} \t | {1} \t | {2} \t | {3} \t | {4}",
+                                // call the objects from their index    
+                                //reader[0], reader[1], reader[2], reader[3], reader[4]));
+                            var cypherQuery5 = @"CREATE (Auction:AuctionType {name: '" + reader[1] + @"'})
+                                             CREATE (State_City:State_CityType {name: '" + reader[2] + @"'})
+                                             CREATE (Usa_Port:Usa_PortType {name: '" + reader[3] + @"'})
+                                             CREATE (Price:PriceType {name: '" + reader[4] + @"'})
+                                             CREATE 
+                                                  (Auction)-[:IS_AUCTION_FOR]->(State_City),
+                                                  (State_City)-[:CAR_GOES_TO]->(Usa_Port),
+                                                  (Usa_Port)-[:TRANSPORT_PRICE_IS]->(Price)";
+                            var session2 = driver.AsyncSession(o => o.WithDatabase("neo4j"));
+                            var result2 = await session2.WriteTransactionAsync(async tx =>
+                            {
+                                var r = await tx.RunAsync(cypherQuery5,
+                                        new { category = "Dairy Products" });
+                                return await r.ToListAsync();
+                            });
+
+                        }
+                        Console.WriteLine("Grap is created");
+                        Thread.Sleep(10000);
+                    }
+
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("couldnt connect");
+                }
+
+            }
+            else
+            {
+                Console.WriteLine("Finished!");
+                Thread.Sleep(10000);
+            }
+
+
+
+        }
+
+
+    }
 
     }
 
 
- 
-    //public class HelloWorldExample: IDisposable
-    //{
-    //    private readonly IDriver _driver;
-    //    public HelloWorldExample(string uri, string userName, string password)
-    //    {
-    //        _driver = GraphDatabase.Driver(uri, AuthTokens.Basic(userName, password));
-    //    }
-
-    //    public void PrintGreeting(string message)
-    //    {
-    //        using var session = _driver.Session();
-    //        var greeting = session.WriteTransaction(tx =>
-    //        {
-    //            var result = tx.Run("CREATE (a:Greeting) " +
-    //                "SET a.message = $message " +
-    //                "RETURN a.message + ', from node ' + id(a)",
-    //                new { message });
-    //            return result.Single()[0].As< string > ();
-    //        });
-    //        Console.WriteLine(greeting);
-    //    }
-    //    public void Dispose()
-    //    {
-    //        _driver.Dispose();
-    //    }
-    //}
-
-
-    //public class Program
-    //{
-    //    private static IWebDriver driver;
-    //    static public void Main(string[] args)
-    //    {
-
-
-    //        string connetionString = null;
-    //        SqlConnection cnn;
-    //        connetionString = @"data source = GNG; initial catalog = Mctrans; trusted_connection = true";
-    //        cnn = new SqlConnection(connetionString);
-    //        try
-    //        {
-    //            cnn.Open();
-    //            SqlCommand command = new SqlCommand("SELECT * FROM Mc_Price", cnn);
-    //            command.ExecuteNonQuery();
-    //            using (SqlDataReader reader = command.ExecuteReader())
-    //            {
-    //                while (reader.Read())
-    //                {
-    //                     write the data on to the screen    
-    //                    Console.WriteLine(String.Format("{0} \t | {1} \t | {2} \t | {3} \t | {4}",
-    //                         call the objects from their index    
-    //                        reader[0], reader[1], reader[2], reader[3], reader[4]));
-    //                }
-    //            }
-
-    //        }
-    //        catch (Exception ex)
-    //        {
-    //            Console.WriteLine("couldnt connect");
-    //        }
-
-
-    //         Creating and initializing threads
-    //        Thread thr1 = new Thread(scraper1);
-    //        Thread thr2 = new Thread(scraper2);
-    //        thr1.Start();
-    //        thr2.Start();
-
-
-    //        driver = new ChromeDriver();
-    //        driver.Navigate().GoToUrl("http://calculator.mctrans.ge/?fbclid=IwAR3zsudrbBgCGAfNnvWgEh2z9wqpKWKSPp6peY6_cQ6WwCjOypFc1vFfkjE");
-    //        Thread.Sleep(2000);
-
-    //        var collections = driver.FindElement(By.XPath("//*[@id=\"myModal\"]/div/div/div[1]/a"));
-    //        Console.WriteLine(collections);
-    //        collections.Submit();
-    //        collections.Click();
-    //        Thread.Sleep(2000);
-    //        collections.SendKeys("Webshop");
-    //        collections.Submit();
-
-    //        var Auction = driver.FindElement(By.XPath("//*[@id=\"auc_id\"]"));
-    //        Auction.Click();
-    //        Thread.Sleep(1000);
-    //        for (int i = 2; i < 10; i++)
-    //        {
-    //            var Copart = driver.FindElement(By.XPath("//*[@id=\"auc_id\"]/option[" + i + "]"));
-
-    //            Copart.Click();
-    //            Thread.Sleep(1000);
-
-    //            var body = driver.FindElement(By.XPath("/html/body"));
-    //            body.Click();
-    //            Thread.Sleep(1000);
-
-    //            var State_city = driver.FindElement(By.XPath("//*[@id=\"city_id\"]"));
-    //            State_city.Click();
-    //            Thread.Sleep(1000);
-
-    //            for (int x = 2; x < 235; x++)
-    //            {
-    //                var AL_ANC = driver.FindElement(By.XPath("//*[@id=\"city_id\"]/option[" + x + "]"));
-
-    //                AL_ANC.Click();
-
-
-    //                body.Click();
-
-    //                var USA_p = driver.FindElement(By.XPath("//*[@id=\"port_id\"]"));
-    //                USA_p.Click();
-
-
-    //                for (int y = 2; y < 8; y++)
-    //                {
-
-    //                    var nj = driver.FindElement(By.XPath("//*[@id=\"port_id\"]/option[" + y + "]"));
-
-    //                    nj.Click();
-
-    //                    var body1 = driver.FindElement(By.XPath("/html/body/div/div[1]"));
-    //                    body1.Click();
-
-    //                    var value = driver.FindElements(By.XPath("//*[@id=\"data3\"]"));
-    //                    foreach (var item in value)
-    //                    {
-    //                        if (item.Text != "0 US$" && item.Text != "0US$")
-    //                        {
-    //                            Console.Write(Copart.Text + "   ");
-    //                            Console.Write(AL_ANC.Text + "   ");
-    //                            Console.Write(nj.Text + "   -");
-    //                            Console.Write(item.Text + "\n");
-    //                            SqlCommand insertCommand = new SqlCommand("INSERT INTO Mc_Price (Id, Auction, State_City, USA_Port, Price) VALUES (@0, @1, @2, @3, @4)", cnn);
-    //                            SqlCommand cmd = new SqlCommand("sp_insert", cnn);
-    //                            cmd.CommandType = CommandType.StoredProcedure;
-    //                            cmd.Parameters.AddWithValue("@Id", i);
-    //                            cmd.Parameters.AddWithValue("@Auction", Copart.Text);
-    //                            cmd.Parameters.AddWithValue("@State_City", AL_ANC.Text);
-    //                            cmd.Parameters.AddWithValue("@USA_Port", nj.Text);
-    //                            cmd.Parameters.AddWithValue("@Price", item.Text);
-
-    //                            int z = cmd.ExecuteNonQuery();
-
-
-    //                        }
-    //                    }
-    //                }
-    //            }
-    //        }
-
-    //    }
-
-    //}
-
-
-}
 
 
 

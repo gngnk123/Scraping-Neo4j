@@ -14,6 +14,7 @@ namespace dotnet
     {
         [Obsolete]
         static async Task Main()
+
         {
             var driver = GraphDatabase.Driver("bolt://localhost:7687",
                             AuthTokens.Basic("GNG", "123456"));
@@ -68,7 +69,7 @@ namespace dotnet
                         var session2 = driver.AsyncSession(o => o.WithDatabase("neo4j"));
                         var result2 = await session2.WriteTransactionAsync(async tx =>
                         {
-                            var r = await tx.RunAsync(cypherQuery5,
+                            var r = await tx.RunAsync(cypherQuery3,
                                     new { category = "Dairy Products" });
                             return await r.ToListAsync();
                         });
